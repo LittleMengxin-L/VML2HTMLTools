@@ -1,0 +1,14 @@
+{
+  "name": "outlook-vml-webview",
+  "version": "1.0.0",
+  "description": "Microsoft Outlook Classic VML parser and ArkWeb adapter",
+  "main": "Index.ets",
+  "author": "VML SDK Maintainers",
+  "license": "UNLICENSED",
+  "artifactType": "original",
+  "compatibleSdkVersion": "12",
+  "compatibleSdkType": "HarmonyOS",
+  "obfuscated": false,
+  "nativeComponents": [],
+  "dependencies": {}
+}
