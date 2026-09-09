@@ -1,0 +1,9 @@
+{
+  "name": "outlook-vml-har-build-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node ./tools/generate-runtime.mjs"
+  }
+}

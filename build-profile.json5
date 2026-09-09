@@ -1,0 +1,60 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\Administrator\\.ohos\\config\\default_VmlProject_4MyB064RmJqoflaYFOYnYZtfScoHi-Zbpm77vMVzbYQ=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BD22AF247F534006DE7A4E99065E7EDA2A12DF92C7B539E956F2EB7C1F0DFEE73F25286B2E7459B",
+          "profile": "C:\\Users\\Administrator\\.ohos\\config\\default_VmlProject_4MyB064RmJqoflaYFOYnYZtfScoHi-Zbpm77vMVzbYQ=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\Administrator\\.ohos\\config\\default_VmlProject_4MyB064RmJqoflaYFOYnYZtfScoHi-Zbpm77vMVzbYQ=.p12",
+          "storePassword": "0000001B8B4F9723CB56445FDC493D9811580BE4B8F620A5AE0E77A6A63A53F572DABA069AA9A64D637B30"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "6.1.0(23)",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "outlook_vml_webview",
+      "srcPath": "./outlook-vml-har"
+    }
+  ]
+}
