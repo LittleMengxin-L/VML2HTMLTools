@@ -51,15 +51,6 @@ export interface VmlReport {
   infos: VmlIssue[];
 }
 
-export interface VmlParserOptions {
-  processAllWrapTypes?: boolean;
-  removeEmptyPlaceholderTables?: boolean;
-  skipDirectDivImages?: boolean;
-  markAttribute?: string;
-  maxCoordinatePt?: number;
-  debug?: boolean;
-}
-
 export interface ParseHtmlResult {
   html: string | null;
   report: VmlReport;

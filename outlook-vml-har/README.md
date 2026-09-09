@@ -91,7 +91,7 @@ ohpm install outlook-vml-webview
 1. **挂载容器组件**：在页面 `build()` 中挂载 `<VmlHost>`（可放在 `Stack` 任意层）；
 2. **准备输入文件**：把待解析的 HTML 写入应用沙箱内可读的绝对路径（公共目录文件需先经
    Picker 授权并拷贝进沙箱）；
-3. **执行解析**：调用 `VmlHostController.parseFile(inputPath, outputPath, options?)`；
+3. **执行解析**：调用 `VmlHostController.parseFile(inputPath, outputPath)`；
 4. **判定结果**：检查 `report.status` 与 `report.errors`（结构化错误码，见「错误处理」），
    成功则使用返回的 `outputPath` 文件继续展示或编辑。
 
@@ -116,13 +116,12 @@ VmlHost({ host: this.host })
 
 托管解析控制器，持有内部页面状态机（就绪等待、15 秒超时、销毁清理与等待队列释放）。
 
-**`parseFile(inputPath, outputPath, options?)`**
+**`parseFile(inputPath, outputPath)`**
 
 | 名称 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `inputPath` | `string` | 是 | 源 HTML 文件路径（沙箱内可读绝对路径） |
 | `outputPath` | `string` | 是 | 解析结果落盘路径（父目录须存在且可写） |
-| `options` | `VmlParserOptions` | 否 | 解析选项，透传给注入内核 |
 
 **返回值：** `Promise<VmlFileParseResult>`
 
@@ -153,7 +152,7 @@ struct MailPage {
       return;
     }
     // 输入输出路径均为应用沙箱内可读写绝对路径（例如 filesDir）。
-    // 不传 options：解析行为全部采用内核 DEFAULT_OPTIONS 默认值。
+    // 解析行为固定遵循 vmlparse.js，无需配置参数。
     const result: VmlFileParseResult = await this.host.parseFile(
       `${context.filesDir}/mail-input.html`,
       `${context.filesDir}/mail-output.html`
@@ -180,7 +179,7 @@ struct MailPage {
 > `aboutToDisappear` 自动回调，调用方无需手动调用。单个页面建议复用同一个
 > `VmlHostController`；组件销毁后重新挂载即可继续使用。
 
-##### OutlookVmlSdk.parseVMLImagesFromHtml(html, options?)
+##### OutlookVmlSdk.parseVMLImagesFromHtml(html)
 
 字符串入口的离线转换：输入完整 HTML，在 ArkWeb 的离屏 `Document` 中解析 VML，输出完整
 HTML。`VmlHostController.parseFile` 内部即此入口的文件级封装；自带 Web 页面、希望直接
@@ -192,7 +191,6 @@ HTML。`VmlHostController.parseFile` 内部即此入口的文件级封装；自�
 | 名称 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `html` | `string` | 是 | 待解析的完整 HTML 字符串 |
-| `options` | `VmlParserOptions` | 否 | 解析选项，透传给注入内核 |
 
 **返回值：** `Promise<ParseHtmlResult>`
 
@@ -219,16 +217,7 @@ if (result.report.status !== 'failed' && result.html !== null) {
 }
 ```
 
-##### VmlParserOptions
-
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `processAllWrapTypes` | `boolean` | `false` | 默认仅处理携带 wrap 环绕布局信息的 VML `shape`；置 `true` 后对无 wrap 信息的 `shape` 一并处理 |
-| `removeEmptyPlaceholderTables` | `boolean` | `true` | 转换后移除 Outlook 为 VML 预留的空占位表格 |
-| `skipDirectDivImages` | `boolean` | `true` | 直接位于 `<div>` 下的图片跳过定位，保持兼容的环绕图片结构 |
-| `markAttribute` | `string` | `data-vml-processed` | 已处理节点的标记属性名（防止重复处理） |
-| `maxCoordinatePt` | `number` | `10000000` | 坐标安全上限，超出视为异常布局，保留原图并跳过定位 |
-| `debug` | `boolean` | `false` | 输出调试诊断信息 |
+解析规则固定执行：无 `w:wrap` 时保留；有 `w:wrap` 时仅保留 `anchorx="margin"` 或 `anchory="page"`；直接 `div > img` 跳过；已有定位 span 清空原 style 后写入 VML 样式。table 仅在最近 VML 容器范围内处理。
 
 ##### VmlReport
 
@@ -304,7 +293,7 @@ struct MailPage {
     }
 
     // Step 2: 执行托管解析（内部等待容器就绪 → 解码 → 注入内核 → 离线解析）。
-    // 不传 options：解析行为全部采用内核 DEFAULT_OPTIONS 默认值。
+    // 解析行为固定遵循 vmlparse.js，无需配置参数。
     const result: VmlFileParseResult = await this.host.parseFile(inputPath, outputPath);
 
     // Step 3: 判定结果。

@@ -5,7 +5,6 @@ import { decodeHtmlContent, HtmlDecodeResult, normalizeCharsetDeclaration } from
 import {
   HarErrorCode,
   VmlFileParseResult,
-  VmlParserOptions,
   VmlReportStatus
 } from './VmlTypes';
 import { createHostFailure } from './VmlReport';
@@ -55,13 +54,11 @@ export class VmlHostController {
    *
    * @param inputPath 源 HTML 文件路径（应用沙箱内可读绝对路径）。
    * @param outputPath 解析后 HTML 的落盘路径（父目录必须存在且可写）。
-   * @param options 透传给解析内核的选项。
    * @returns 输出路径与结构化解析报告。
    */
   async parseFile(
     inputPath: string,
-    outputPath: string,
-    options: VmlParserOptions = {}
+    outputPath: string
   ): Promise<VmlFileParseResult> {
     if (inputPath.trim().length === 0 || outputPath.trim().length === 0) {
       return {
@@ -102,7 +99,7 @@ export class VmlHostController {
     }
 
     const sdk: OutlookVmlSdk = new OutlookVmlSdk(this.controller);
-    const parsed = await sdk.parseVMLImagesFromHtml(html, options);
+    const parsed = await sdk.parseVMLImagesFromHtml(html);
     if (parsed.report.status === VmlReportStatus.FAILED || parsed.html === null) {
       return { outputPath: null, report: parsed.report };
     }

@@ -5,7 +5,6 @@ export type {
   ParseHtmlResult,
   VmlFileParseResult,
   VmlIssue,
-  VmlParserOptions,
   VmlReport,
   VmlStats
 } from './src/main/ets/VmlTypes';

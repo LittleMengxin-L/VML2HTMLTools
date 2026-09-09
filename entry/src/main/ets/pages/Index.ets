@@ -15,7 +15,7 @@ struct Index {
       return;
     }
     // 输入输出路径均为应用沙箱内可读写绝对路径（例如 filesDir）。
-    // 不传 options：解析行为全部采用内核 DEFAULT_OPTIONS 默认值。
+    // 解析行为固定遵循 vmlparse.js，无需配置参数。
     const result: VmlFileParseResult = await this.host.parseFile(
       `${context.filesDir}/mail-input.html`,
       `${context.filesDir}/mail-output.html`

@@ -1,6 +1,6 @@
 import { webview } from '@kit.ArkWeb';
 import { VML_RUNTIME_SOURCE, VML_RUNTIME_VERSION } from './VmlRuntime';
-import { HarErrorCode, ParseHtmlResult, VmlParserOptions, VmlReport } from './VmlTypes';
+import { HarErrorCode, ParseHtmlResult, VmlReport } from './VmlTypes';
 import { createHostFailure } from './VmlReport';
 
 const HOST_STAGE: string = 'harmony-adapter';
@@ -86,8 +86,7 @@ export class OutlookVmlSdk {
    * 不把邮件加载为当前页面，也不依赖 img/cid 等资源完成加载。
    */
   async parseVMLImagesFromHtml(
-    html: string,
-    options: VmlParserOptions = {}
+    html: string
   ): Promise<ParseHtmlResult> {
     if (html.trim().length === 0) {
       return {
@@ -118,7 +117,6 @@ export class OutlookVmlSdk {
         const root = parsedDocument.documentElement;
         window.OutlookVMLParser.parseVMLImages(
           root,
-          ${encodeForJavaScript(options as Object)},
           report
         );
         const doctype = parsedDocument.doctype ?
