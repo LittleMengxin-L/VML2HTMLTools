@@ -1,8 +1,0 @@
-build/
-dist/
-oh_modules/
-node_modules/
-.hvigor/
-local.properties
-*.har
-
