@@ -1,0 +1,6 @@
+dist/
+build/
+tools/
+package.json
+node_modules/
+*.log
