@@ -4,3 +4,14 @@ tools/
 package.json
 node_modules/
 *.log
+.git/
+.idea/
+.hvigor/
+local.properties
+*.p12
+*.pfx
+*.p7b
+*.cer
+*.keystore
+*.jks
+*.key

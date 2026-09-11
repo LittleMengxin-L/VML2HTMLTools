@@ -7,7 +7,7 @@ import {
   VmlStats
 } from './VmlTypes';
 
-/** 空的解析统计对象。所有「失败报告」与「空成功报告」共用同一结构。 */
+/** 创建各项计数均为零的解析统计对象。 */
 function createEmptyStats(): VmlStats {
   return {
     shapes: 0,
@@ -21,9 +21,12 @@ function createEmptyStats(): VmlStats {
 }
 
 /**
- * 构造一个 FAILED 状态的适配层错误报告。
- * @param stage 出错层次（如 'vml-host' / 'harmony-adapter'），用于定位问题来源。
- * @param action 面向调用方的修复建议，随出错场景不同而不同。
+ * 创建包含单条错误的适配层失败报告。
+ * @param code 适配层错误码。
+ * @param message 错误描述，同时作为 cause 字段。
+ * @param stage 错误发生阶段。
+ * @param action 调用方可采取的处理建议。
+ * @returns status 为 failed 的诊断报告。
  */
 export function createHostFailure(
   code: HarErrorCode,

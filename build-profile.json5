@@ -5,20 +5,19 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\Administrator\\.ohos\\config\\default_VmlProject_4MyB064RmJqoflaYFOYnYZtfScoHi-Zbpm77vMVzbYQ=.cer",
+          "certpath": "C:/Users/Administrator/.ohos/config/default_VML2HTMLTools_ubI3crxzbPINBO2aPszUBRkCq42OMlSmtu0NPl6ea1o=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BD22AF247F534006DE7A4E99065E7EDA2A12DF92C7B539E956F2EB7C1F0DFEE73F25286B2E7459B",
-          "profile": "C:\\Users\\Administrator\\.ohos\\config\\default_VmlProject_4MyB064RmJqoflaYFOYnYZtfScoHi-Zbpm77vMVzbYQ=.p7b",
+          "keyPassword": "0000001AEEF2BDA1EB6AF07A4A1BEF64DD6CE717120F65836CC64D41D5E1A2E43B03E24E3ADCB0652B71",
+          "profile": "C:/Users/Administrator/.ohos/config/default_VML2HTMLTools_ubI3crxzbPINBO2aPszUBRkCq42OMlSmtu0NPl6ea1o=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\Administrator\\.ohos\\config\\default_VmlProject_4MyB064RmJqoflaYFOYnYZtfScoHi-Zbpm77vMVzbYQ=.p12",
-          "storePassword": "0000001B8B4F9723CB56445FDC493D9811580BE4B8F620A5AE0E77A6A63A53F572DABA069AA9A64D637B30"
+          "storeFile": "C:/Users/Administrator/.ohos/config/default_VML2HTMLTools_ubI3crxzbPINBO2aPszUBRkCq42OMlSmtu0NPl6ea1o=.p12",
+          "storePassword": "0000001ABCD03928DAEAEE6757D91C420E0DFB42B2F328F9D1CDA39CA716CC47B836D04EF2F6094AFD9F"
         }
       }
     ],
     "products": [
       {
         "name": "default",
-        "signingConfig": "default",
         "targetSdkVersion": "6.1.0(23)",
         "compatibleSdkVersion": "6.1.0(23)",
         "runtimeOS": "HarmonyOS",

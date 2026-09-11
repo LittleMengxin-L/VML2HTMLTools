@@ -1,28 +1,13 @@
 /**
- * Outlook 经典版 VML 图片转换器（重构版）
+ * Outlook VML 图片转换运行时。
  *
- * 目标：把 Outlook 条件注释中的 VML shape 信息映射到普通 img，
- * 为不支持 VML 的 WebView 提供可用的绝对定位信息。
+ * 将条件注释中的 VML 位置与尺寸映射到普通图片及包装节点。
+ * changeVMLSrcs 将普通图片源同步至 VML；replaceVMLSrcs 按资源目录匹配反向同步。
+ * parseVMLImages 依次执行上述源同步与布局处理，返回结构化诊断报告。
+ * VML_P2DIV 接收 HTML 字符串并返回段落转换后的字符串。
  *
- * 特点：
- * - 不依赖 jQuery；但入口兼容 jQuery 对象、Element 和 DocumentFragment。
- * - 按 Extract -> Normalize -> Plan -> Apply 四个阶段组织。
- * - 精确匹配 v:shapes ID，支持常用 CSS 长度单位。
- * - 严格按原 vmlparse.js 的固定规则处理图片结构和占位 table。
- * - 所有入口返回 stats/issues/errors/warnings，便于定位特定邮件兼容问题。
- *
- * 两条主要业务链路：
- *
- * 1. 回复/转发/再次编辑已有 VML 的邮件：
- *    const report = OutlookVMLParser.changeVMLSrcs($content);
- *
- * 2. 阅读邮件并在 WebView 中展示 VML 图片：
- *    html = OutlookVMLParser.VML_P2DIV(html); // 注入 WebView 前执行
- *    // WebView 完成 DOM 创建后：
- *    const report = OutlookVMLParser.parseVMLImages($content);
- *
- * VML_P2DIV 是展示链路的结构预处理函数：将承载 VML 的 p 替换为 div，
- * 防止 Outlook 生成的 p > span > table 结构被 p 的内容模型/段落边界截断。
+ * 运行环境须提供 DOM API。DOM 入口接收具有 innerHTML 和 querySelectorAll
+ * 能力的 Element，或首个元素满足该条件的 jQuery 对象。
  */
 (function attachOutlookVMLParser(global) {
     'use strict';
@@ -384,7 +369,7 @@
 
     function isShapeEligible(shape) {
         if (!shape.hasWrap) return true;
-        // 保持旧实现的筛选语义：浮于文字上/衬于文字下相关锚点进入定位流程。
+        // 带 wrap 的 shape 仅接受 margin 水平锚点或 page 垂直锚点。
         return shape.anchor.x === 'margin' || shape.anchor.y === 'page';
     }
 
@@ -395,8 +380,7 @@
     }
 
     function isNearestVmlContainer(element) {
-        // 严格对应 vmlparse.js：只要任一直接子元素内部仍含 VML，
-        // 当前元素就不是距离该 VML 最近的候选容器。
+        // 任一直接子元素内部仍含 VML 时，排除当前候选容器。
         return !Array.from(element.children).some(child =>
             containsVmlCondition(child.innerHTML)
         );
@@ -435,7 +419,7 @@
     function buildShapeIndex(shapes, report) {
         const shapeById = new Map();
         shapes.forEach(shape => {
-            // Outlook HTML 中偶尔出现重复 ID。保留第一次出现项，避免后续父容器覆盖最近容器。
+            // 同 ID 保留首次出现的 shape，并对后续记录生成诊断信息。
             if (!shapeById.has(shape.id)) shapeById.set(shape.id, shape);
             else addIssue(report, 'V2009', { shapeId: shape.id });
         });
@@ -454,7 +438,7 @@
         return {
             left,
             top,
-            // 原实现对多个 shape 的每个字段分别取最小值，而不是计算包围盒。
+            // 多 shape 的宽度、高度和层级分别取最小值。
             width: Math.min(...valid.map(shape => shape.boxPt.width)),
             height: Math.min(...valid.map(shape => shape.boxPt.height)),
             zIndex: Math.min(...valid.map(shape => shape.zIndex))
@@ -693,8 +677,7 @@
             }
             if (positionedNode.contains(container)) throw createCodedError('D4004');
 
-            // 严格对应 vmlparse.js：已有 span 先删除全部内联样式；
-            // 新建包装 span 本身没有需要清理的旧样式。
+            // 已有定位 span 清除全部内联样式，再写入 VML 布局。
             if (plan.strategy === 'existing-span' || plan.strategy === 'link-existing-span') {
                 positionedNode.removeAttribute('style');
             }
@@ -812,7 +795,7 @@
                 return result.html;
             });
 
-            // 条件注释中的 VML 只能通过字符串改写；仅在内容确实变化时重建 DOM。
+            // 仅在 VML 字符串发生变化时更新容器内容。
             if (rewrittenHtml !== originalHtml) root.innerHTML = rewrittenHtml;
         } catch (error) {
             addIssue(report, 'S5003', { originalError: error?.message || String(error) });
@@ -821,8 +804,10 @@
     }
 
     /**
-     * 阅读展示链路的图片源同步，严格对应原始 replaceVMLSrcs：
-     * VML imagedata src -> 普通 img src，不修改 VML 条件注释。
+     * 按 shape ID 与 inline 目录号，将 VML 图片源同步至普通图片。
+     * @param input 待处理的 DOM 容器或 jQuery 对象。
+     * @param suppliedReport 可选的累计诊断报告。
+     * @returns 包含源同步诊断的 Promise；此函数不改写 VML 注释。
      */
     async function replaceVMLSrcs(input, suppliedReport) {
         const report = resolveReport(suppliedReport);
@@ -962,9 +947,10 @@
     }
 
     /**
-     * 编辑链路主函数。
-     * 用于 WebView 邮箱回复、转发、再次编辑已有 VML 的邮件，使 VML imagedata
-     * 与普通 img 使用一致的本地资源文件名；不负责把 VML 坐标转换为展示布局。
+     * 将普通图片的资源文件名同步到对应的 VML imagedata。
+     * @param input 待处理的 DOM 容器或 jQuery 对象。
+     * @param suppliedReport 可选的累计诊断报告。
+     * @returns 源路径改写的诊断报告。
      */
     function changeVMLSrcs(input, suppliedReport) {
         const report = resolveReport(suppliedReport);
@@ -979,8 +965,10 @@
     }
 
     /**
-     * 展示链路预处理函数，应在 HTML 注入 WebView 之前执行。
-     * 将含 VML 条件块的 p 替换为 div，避免 p > span > table 被截断。
+     * 在 DOM 解析前，将含 VML 条件块的 p 标签替换为 div。
+     * @param html 待预处理的 HTML 字符串。
+     * @param suppliedReport 可选的累计诊断报告。
+     * @returns 预处理后的 HTML；转换异常时返回原始字符串。
      */
     function VML_P2DIV(html, suppliedReport) {
         const report = resolveReport(suppliedReport);
@@ -993,9 +981,11 @@
     }
 
     /**
-     * 展示链路主函数，应在 WebView 已生成 DOM 后执行。
-     * 解析 VML shape 的位置和尺寸，并将其映射到普通 img/包装节点。
-     * 本函数不承担回复、转发或再次编辑时的 VML 源路径修复职责。
+     * 同步图片源并将 VML 位置与尺寸应用到普通图片的定位节点。
+     * 处理顺序：replaceVMLSrcs、changeVMLSrcs、shape 提取、布局应用。
+     * @param input 待处理的 DOM 容器或 jQuery 对象。
+     * @param suppliedReport 可选的累计诊断报告。
+     * @returns 包含统计、错误、警告和提示的诊断报告。
      */
     function parseVMLImages(input, suppliedReport) {
         const report = resolveReport(suppliedReport);

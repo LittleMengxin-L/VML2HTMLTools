@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const toolsDirectory = dirname(fileURLToPath(import.meta.url));
 const moduleDirectory = resolve(toolsDirectory, '..');
 const etsPath = join(moduleDirectory, 'src', 'main', 'ets', 'VmlRuntime.ets');
-// 运行时源文件放在 tools/ 下：它是「构建期输入」，而非打包进 HAR 的运行时 rawfile 资源。
+// 构建期读取 JavaScript 内核，生成用于 ArkWeb 注入的 ArkTS 字符串常量。
 const sourcePath = join(toolsDirectory, 'runtime', 'vml-runtime.iife.js');
 
 const source = await readFile(sourcePath, 'utf8');
@@ -23,7 +23,7 @@ const generated = `// 此文件由 tools/generate-runtime.mjs 自动生成，请
 
 await mkdir(dirname(etsPath), { recursive: true });
 
-// 幂等写入：内容未变化时不重写文件，避免破坏 Hvigor 的增量编译缓存。
+// 仅在生成内容变化时写入，保留增量编译缓存。
 let existing = null;
 try {
   existing = await readFile(etsPath, 'utf8');

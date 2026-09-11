@@ -1,12 +1,12 @@
 # VML 去配置化同步与逻辑审核
 
-审核日期：2026-09-09。工程：`D:\VML\VmlProject-github\VML2HTMLTools`。
+审核日期：2026-09-09。工程：`项目根目录`。
 
 ## 范围与结论
 
-以 `D:\VML\vmlparse.js` 为基准，并保留用户后续明确的两项要求：先 replaceVMLSrcs 再 changeVMLSrcs；table 只有在最近 VML 容器内部才参与处理，图片最多提升到 table 同级。
+以 `原始 vmlparse.js` 为基准，并保留用户后续明确的两项要求：先 replaceVMLSrcs 再 changeVMLSrcs；table 只有在最近 VML 容器内部才参与处理，图片最多提升到 table 同级。
 
-本次已删除 DEFAULT_OPTIONS、normalizeOptions、配置驱动的处理分支与 VmlParserOptions，更新 SDK、VmlHost、entry 和使用文档。运行时与 `D:\VML\vmlparse.refactored.js` 字节一致，已在本工程根目录生成同名 JS；原始 vmlparse.js 未修改。
+本次已删除 DEFAULT_OPTIONS、normalizeOptions、配置驱动的处理分支与 VmlParserOptions，更新 SDK、VmlHost、entry 和使用文档。运行时与 `vmlparse.refactored.js` 字节一致，已在本工程根目录生成同名 JS；原始 vmlparse.js 未修改。
 
 **去配置化已完成，但现有重构实现不能认定为与原始代码完全等价。** 以下差异为本次审核发现，未混入同步修改。修复建议均以恢复原始处理语义、保留已确认的 table 限制为前提，不建议增加策略选项。
 
@@ -81,7 +81,7 @@ normalizeCharsetDeclaration 对全文使用正则替换 charset，匹配掉开�
 - **P2，文件读写完整性**：VmlHost.ets:176、206 单次读写，没有检查短读、短写；发生短读时可能把截断 HTML 当完整文件解析，发生短写时可能仍返回成功。建议循环完成并校验总字节数，具体设备发生概率未测试。
 - **P2，宿主重新挂载**：VmlHost.ets:47 销毁时没有清除 ready；复用同一 controller 时，在下一次 onPageEnd 前调用 parseFile 会立即返回失败，而不会等新页面就绪。建议销毁时重置就绪状态，保持现有超时错误报告。
 - **解析接受范围扩大**：当前条件标记识别忽略大小写并接受更多写法；shape 的 style 字段顺序不受限制，缺失 z-index 时降级为 0。原始代码对条件标记及字段顺序更严格，要求正则中的 z-index 存在。因此不能把当前更宽松的行为称为逐输入等价。严格基准下应恢复原始筛选条件；无效尺寸处理则需明确保留的是何种原始结果，不能默认“跳过”就是等价。
-- **原始辅助函数缺失**：已在 D:\VML 的 JS 源文件中检索，原始文件调用的 toPt、isTableEmpty、getVMLTextAlign 没有找到定义。当前 parseLengthToPt、isEmptyPlaceholderTable、textAlign 回退不能证明与它们等价。特别是空表判断与 td 垂直对齐，需以原始辅助函数源码或原工程测试输出作为后续依据，不应猜测后直接宣称一致。
+- **原始辅助函数缺失**：已在 原始源码目录 的 JS 源文件中检索，原始文件调用的 toPt、isTableEmpty、getVMLTextAlign 没有找到定义。当前 parseLengthToPt、isEmptyPlaceholderTable、textAlign 回退不能证明与它们等价。特别是空表判断与 td 垂直对齐，需以原始辅助函数源码或原工程测试输出作为后续依据，不应猜测后直接宣称一致。
 - **段落转换的扫描边界**：VML_P2DIV 当前通过字符串搜索 p 开闭标签以保护 DOMParser 前的 table 结构，这符合此前的预处理约束；但没有跳过注释和 script/style 文本，里面出现类似 p 的文本时可能被当作真实段落。建议只识别真实标签，并完整跳过注释，不使用 template 重建 VML 注释。尚未进行完整 HTML tokenizer 级验证。
 
 ## 本次未判为问题的规则

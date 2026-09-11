@@ -6,14 +6,14 @@ import { createHostFailure } from './VmlReport';
 const HOST_STAGE: string = 'harmony-adapter';
 const HOST_ACTION: string = '未修改邮件 DOM，请检查 ArkWeb 页面状态和 JavaScript 权限。';
 
+/** 将参数序列化为可嵌入运行时脚本的 JSON 表达式。 */
 function encodeForJavaScript(value: Object | string): string {
   const encoded: string | undefined = JSON.stringify(value);
   return encoded === undefined ? 'null' : encoded;
 }
 
 /**
- * ArkWeb 在不同系统版本中可能返回原始字符串，也可能返回 JSON 编码后的字符串。
- * 最多解包两层，既兼容 `1.0.0`，也兼容 `"1.0.0"` 以及被再次编码的 JSON 报告。
+ * 归一化 ArkWeb 返回的字符串，最多解除两层 JSON 字符串编码。
  */
 function unwrapJavaScriptString(value: string): string {
   let result: string = value.trim();
@@ -35,17 +35,19 @@ function unwrapJavaScriptString(value: string): string {
 }
 
 /**
- * HarmonyOS HAR 适配器（离线转换入口）。
- * 通过 WebviewController 在托管页面的 JavaScript 上下文里执行转换；
- * 字符串入/出，不把邮件加载为当前页面，也不依赖 img/cid 等资源完成加载。
+ * 基于 ArkWeb 的 Outlook VML HTML 转换接口。
+ * 使用独立 Document 解析 HTML，转换过程不等待图片资源加载。
+ * 调用前须确保控制器已关联就绪的 Web 组件，并启用 JavaScript。
  */
 export class OutlookVmlSdk {
   private readonly controller: webview.WebviewController;
 
+  /** @param controller 已关联 Web 组件的 ArkWeb 控制器。 */
   constructor(controller: webview.WebviewController) {
     this.controller = controller;
   }
 
+  /** 检查运行时版本，按需注入脚本；成功返回 null，失败返回诊断报告。 */
   private async ensureRuntime(): Promise<VmlReport | null> {
     try {
       const versionScript: string =
@@ -82,8 +84,10 @@ export class OutlookVmlSdk {
   }
 
   /**
-   * 纯字符串转换：输入完整 HTML，在 ArkWeb 的离线 Document 中解析 VML，输出完整 HTML。
-   * 不把邮件加载为当前页面，也不依赖 img/cid 等资源完成加载。
+   * 转换完整 HTML 中的 VML 图片位置与源路径，返回序列化的 HTML。
+   * 先转换 VML 段落，再同步图片源并应用布局。
+   * @param html 待转换的非空 HTML 字符串。
+   * @returns HTML 与诊断报告；调用方应检查 report.status 和 html 是否为 null。
    */
   async parseVMLImagesFromHtml(
     html: string
@@ -109,8 +113,7 @@ export class OutlookVmlSdk {
       try {
         const sourceHtml = ${encodeForJavaScript(html)};
         const report = window.OutlookVMLParser.createReport();
-        // 字符串入口必须自行完成 VML 段落预处理。否则 td > p 内的 VML
-        // 不属于 parseVMLImages 扫描的 div/li/h2 容器，几何信息会被整体跳过。
+        // 在创建 Document 前转换 VML 段落，使其进入 div/li/h2 定位容器扫描范围。
         const normalizedHtml = window.OutlookVMLParser.VML_P2DIV(sourceHtml, report);
         const parser = new DOMParser();
         const parsedDocument = parser.parseFromString(normalizedHtml, 'text/html');

@@ -5,12 +5,75 @@
 Outlook 经典版导出的 HTML 邮件依赖 IE 条件注释中的 **VML（Vector Markup Language）**
 绘制邮件内嵌图形，而 ArkWeb 不解析 VML，导致这些图形无法渲染。本 SDK 在 ArkWeb 的
 JavaScript 上下文中注入一个离线解析内核，把 VML `shape` 的坐标/尺寸信息提取并映射为
-普通 `<img>` 与绝对定位布局，使邮件在 ArkWeb 中按原版式展示，并保证回复/转发/再次编辑
-链路可拿到干净的 HTML。
+普通 `<img>` 与绝对定位布局，供宿主页面展示或后续编辑。实际展示效果取决于邮件结构及图片资源是否可访问。
 
 SDK 采用「ArkTS 适配层 + 注入式 JS 解析内核」架构：ArkWeb 页面从创建、就绪到内核注入的
 完整生命周期封闭在 HAR 内部，调用方只需**挂载一个透明容器组件、传入源 HTML 文件路径**，
 即可拿到解析后的 HTML 文件路径与结构化解析报告。
+
+## HAR 工程结构
+
+以下目录以仓库中的 `outlook-vml-har/` 为根。源码工程与编译后的 HAR 文件结构不同，构建工具不属于运行时接口。
+
+```text
+outlook-vml-har/
+├── Index.ets                     # SDK 公共导出入口
+├── oh-package.json5              # OHPM 包名、版本、许可证与依赖
+├── .ohpmignore                   # 发布排除规则
+├── build-profile.json5           # HAR 模块构建配置
+├── hvigorfile.ts                 # HAR 构建任务与运行时生成任务
+├── BuildProfile.ets              # 构建工具生成的模块常量
+├── package.json                 # 本地生成脚本配置，private: true
+├── README.md / CHANGELOG.md / LICENSE
+├── src/main/
+│   ├── module.json5             # HarmonyOS 模块声明
+│   ├── resources/               # 模块资源
+│   └── ets/
+│       ├── VmlHost.ets          # 隐藏 Web 宿主、就绪等待及文件解析入口
+│       ├── OutlookVmlSdk.ets    # 运行时注入及 HTML 字符串解析入口
+│       ├── VmlRuntime.ets       # 自动生成的 JS 字符串与版本常量
+│       ├── VmlText.ets          # 文件字节解码与 charset 声明处理
+│       ├── VmlReport.ets        # 适配层失败报告构造
+│       └── VmlTypes.ets         # 结果、统计、诊断类型及错误码
+├── tools/
+│   ├── runtime/vml-runtime.iife.js # JavaScript 解析内核源码
+│   ├── generate-runtime.mjs     # 生成 VmlRuntime.ets
+│   └── pack-example.ps1         # 打包完整示例工程
+├── example/
+│   ├── README.md               # 示例解压及运行说明
+│   └── VML2HTMLTools-example.zip # 完整示例源码快照
+└── build/                      # 本地构建产物，不作为源码分发
+```
+
+若本地存在 `tools/audit-fixed-logic.cjs`，它仅用于手动审核，不参与 SDK 调用或常规构建。
+
+### 模块职责与调用关系
+
+| 文件 | 职责 | 调用方是否直接使用 |
+| --- | --- | --- |
+| `Index.ets` | 定义可从包名导入的公共接口 | 是，统一从 `outlook-vml-webview` 导入 |
+| `VmlHost.ets` | 提供 `VmlHost` 与 `VmlHostController.parseFile`，读取输入并写出结果 | 文件解析场景使用 |
+| `OutlookVmlSdk.ets` | 提供 `parseVMLImagesFromHtml`，在已就绪 ArkWeb 中执行字符串转换 | 字符串解析场景使用 |
+| `VmlRuntime.ets` | 保存内核注入文本，由生成脚本维护 | 不直接使用或手工修改 |
+| `VmlText.ets` | 识别输入编码并处理输出字符集声明 | 内部使用 |
+| `VmlReport.ets` | 生成适配层错误报告 | 内部使用 |
+| `VmlTypes.ets` | 定义结果类型、诊断结构和适配层错误码 | 使用 `Index.ets` 导出的类型 |
+
+文件入口依次执行：`parseFile → 读取并解码 → parseVMLImagesFromHtml → 写入输出文件`。
+字符串入口先调用 `VML_P2DIV`，再创建离屏 Document；内核按
+`replaceVMLSrcs → changeVMLSrcs → VML 几何提取与布局应用` 的顺序处理。
+
+仓库中的 `entry/` 与 `outlook-vml-har/` 是同级模块。`entry/src/main/ets/pages/Index.ets`
+是应用展示页，负责文件选择、导入导出和可见 WebView；HAR 根目录的 `Index.ets` 只是公共导出入口。
+
+### 源码、示例与发布产物
+
+- `package.json` 仅用于本地 `npm run generate`，设置了 `private: true`；OHPM 元数据由 `oh-package.json5` 管理。
+- `tools/` 和 `package.json` 按 `.ohpmignore` 排除。运行时通过生成的 ArkTS 常量注入，不需要部署独立 JS 资源文件。
+- `example/` 保存完整工程压缩包。解压后使用 DevEco Studio 打开工程根目录，不将压缩包直接作为依赖安装。
+- 示例包排除 Git 历史、签名材料、依赖缓存及构建产物；运行应用时需使用自己的签名。
+- 示例压缩包是打包时的快照，不会随 entry 修改自动更新。最新文件选择实现以仓库 entry 源码为准。
+- `build/default/outputs/default/outlook_vml_webview.har` 是构建生成的库产物；最终发布内容应以实际打包结果为准。
 
 ## 开始使用
 
@@ -82,7 +145,7 @@ ohpm install outlook-vml-webview
    管线提取 VML `shape`、把坐标映射为普通图片与定位布局，全程不修改页面 DOM、不依赖
    `img/cid` 资源加载完成；
 4. **落盘**：结果统一以 UTF-8 字节写出，并同步把 HTML 内 charset 声明改写为 `utf-8`，
-   杜绝编码不一致导致的乱码。
+   使输出声明与 UTF-8 写出方式对应。
 
 #### 调用流程
 
@@ -132,7 +195,7 @@ interface VmlFileParseResult {
 }
 ```
 
-**示例：**
+**示例（输入文件须已由应用创建或导入沙箱）：**
 
 ```ts
 import { VmlHost, VmlHostController, VmlFileParseResult } from 'outlook-vml-webview';
@@ -152,7 +215,7 @@ struct MailPage {
       return;
     }
     // 输入输出路径均为应用沙箱内可读写绝对路径（例如 filesDir）。
-    // 解析行为固定遵循 vmlparse.js，无需配置参数。
+    // 解析规则固定，无需配置参数。
     const result: VmlFileParseResult = await this.host.parseFile(
       `${context.filesDir}/mail-input.html`,
       `${context.filesDir}/mail-output.html`
@@ -163,7 +226,7 @@ struct MailPage {
       console.error(`解析失败：${code}`);
       return;
     }
-    // result.outputPath 即解析后的 HTML 文件，可直接用于继续展示或回复/转发。
+    // result.outputPath 是解析后的沙箱文件，可读取展示或通过选择器导出。
   }
 
   build() {
@@ -177,7 +240,7 @@ struct MailPage {
 
 > `notifyPageReady()` 与 `markDestroyed()` 由组件的 `onPageEnd` /
 > `aboutToDisappear` 自动回调，调用方无需手动调用。单个页面建议复用同一个
-> `VmlHostController`；组件销毁后重新挂载即可继续使用。
+> `VmlHostController`，并在解析期间保持组件挂载。
 
 ##### OutlookVmlSdk.parseVMLImagesFromHtml(html)
 
@@ -213,7 +276,7 @@ const sdk: OutlookVmlSdk = new OutlookVmlSdk(controller);
 // 页面 onPageEnd 后调用。
 const result: ParseHtmlResult = await sdk.parseVMLImagesFromHtml(html);
 if (result.report.status !== 'failed' && result.html !== null) {
-  // result.html 为解析后的完整 HTML（含 <!DOCTYPE>）。
+  // result.html 为序列化后的完整 HTML；输入有 doctype 时附带 doctype。
 }
 ```
 
@@ -245,74 +308,36 @@ interface VmlIssue {
 }
 ```
 
-#### 完整使用示例
+#### 文件选择与结果导出示例
 
-随附的 `entry` 演示页（`pages/Index.ets`）提供可运行的全流程：读取 rawfile 样例邮件 →
-字节落盘为输入文件 → `parseFile` 解析 → 在展示 Web 中渲染解析结果并校验正文非空。
-最小完整用法如下：
+当前仓库 `entry/src/main/ets/pages/Index.ets` 提供以下流程：
 
-```ts
-import { fileIo } from '@kit.CoreFileKit';
-import { VmlFileParseResult, VmlHost, VmlHostController } from 'outlook-vml-webview';
+1. 应用启动且页面就绪后，自动打开系统文件选择器。
+2. 用户选择 HTML 文件；应用使用选择器返回的授权 URI，将原始字节复制到 `filesDir/mail-input.html`。
+3. 调用 `host.parseFile(inputPath, outputPath)`，将结果写入 `filesDir/mail-output.html`。
+4. 可见 WebView 展示输出 HTML；系统保存选择器让用户选择输出目录和文件名。
+5. 应用将沙箱结果复制到保存选择器返回的授权 URI。取消导出时保留沙箱结果，可点击“另存为”重试。
 
-@Entry
-@Component
-struct MailPage {
-  private host: VmlHostController = new VmlHostController();
+“选择 HTML”按钮支持重新导入。输入文件不可读或输出位置不可写时，页面显示错误并允许重新选择。
+文件选择和导出属于 entry 的应用逻辑，HAR 不主动弹出文件管理器。
 
-  aboutToAppear(): void {
-    this.parseMailFile();
-  }
+`filesDir` 是应用私有沙箱，应用自身可读写，并不表示电脑或系统文件管理器能直接粘贴文件进去。
+不要拼接 `/data/app/...` 物理路径访问公共目录；选择器返回的 URI 应直接通过文件 API 打开。
+不要将 URI 当作普通绝对路径传给 `parseFile`，应先导入沙箱。
 
-  // Step 1: 输入 HTML 落到沙箱（示例从 rawfile 拷贝；注意保留原始字节，
-  //        编码探测统一由 HAR 完成，不要在此按 UTF-8 解码转写）。
-  private writeBytes(path: string, bytes: Uint8Array): boolean {
-    try {
-      const file: fileIo.File = fileIo.openSync(path,
-        fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
-      fileIo.writeSync(file.fd, bytes.buffer);
-      fileIo.closeSync(file);
-      return true;
-    } catch (error) {
-      console.error(`写入失败：${String(error)}`);
-      return false;
-    }
-  }
-
-  private async parseMailFile(): Promise<void> {
-    const context = this.getUIContext().getHostContext();
-    if (!context) {
-      return;
-    }
-    const inputPath: string = `${context.filesDir}/mail-input.html`;
-    const outputPath: string = `${context.filesDir}/mail-output.html`;
-    const bytes: Uint8Array =
-      await context.resourceManager.getRawFileContent('mail/outlook.html');
-    if (!this.writeBytes(inputPath, bytes)) {
-      return;
-    }
-
-    // Step 2: 执行托管解析（内部等待容器就绪 → 解码 → 注入内核 → 离线解析）。
-    // 解析行为固定遵循 vmlparse.js，无需配置参数。
-    const result: VmlFileParseResult = await this.host.parseFile(inputPath, outputPath);
-
-    // Step 3: 判定结果。
-    if (result.report.status === 'failed' || result.outputPath === null) {
-      console.error(`解析失败：${JSON.stringify(result.report.errors)}`);
-      return;
-    }
-    // Step 4: outputPath 即解析后的 HTML 文件，可读取后继续渲染或编辑。
-    console.info(`解析完成：transformed=${result.report.stats.transformed}`);
-  }
-
-  build() {
-    Stack() {
-      // 业务页面内容……
-      VmlHost({ host: this.host })
-    }
-  }
+```typescript
+// 以下路径属于应用沙箱；inputPath 必须先由文件选择流程导入。
+const inputPath: string = `${context.filesDir}/mail-input.html`;
+const outputPath: string = `${context.filesDir}/mail-output.html`;
+const result: VmlFileParseResult = await this.host.parseFile(inputPath, outputPath);
+if (result.report.status !== 'failed' && result.outputPath !== null) {
+  // 展示结果，并通过系统保存选择器授权的位置导出文件。
 }
 ```
+
+完整示例的解压说明见 [example/README.md](example/README.md)。
+更新示例压缩包时，在仓库根目录运行 `outlook-vml-har/tools/pack-example.ps1`；
+这一步更新示例源码快照，不改变 HAR 的解析实现。
 
 ### 错误处理
 
@@ -330,12 +355,12 @@ struct MailPage {
 | H7013 | `HTML_TRANSFORM_FAILED` | HTML 字符串转换或序列化失败 |
 | H7014 | `FILE_READ_FAILED` | 输入 HTML 文件读取失败 |
 
-**运行时错误码（JS 内核，共 45 个）：** 格式为 `<前缀字母><4 位数字>`，前缀区分处理
-阶段，例如 `I1001`（输入校验）、`V2001`（VML 提取）、`M3007`（布局规划）、`X9001`
+**运行时错误码（JS 内核）：** 格式为 `<前缀字母><4 位数字>`，前缀区分处理
+阶段，例如 `I1001`（输入校验）、`V2001`（VML 提取）、`M3006`（布局规划）、`X9001`
 （未归类异常）。脚本执行异常时由适配层统一以 `H7013` 返回。
 
 **编码降级不报错：** 输入文件声明了无法识别的字符编码时，`VmlText` 自动按 UTF-8 降级
-解码并输出 hilog 警告，不影响解析流程。
+解码并记录警告；转换会继续，但降级不保证原文字符正确。
 
 ## 平台支持
 

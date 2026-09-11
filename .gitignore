@@ -11,3 +11,12 @@
 **/.test
 /.appanalyzer
 /.workbuddy
+
+# Local signing materials
+**/*.p12
+**/*.pfx
+**/*.p7b
+**/*.cer
+**/*.keystore
+**/*.jks
+**/*.key

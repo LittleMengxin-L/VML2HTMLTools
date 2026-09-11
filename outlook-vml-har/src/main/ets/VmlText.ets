@@ -1,9 +1,12 @@
 import { util } from '@kit.ArkTS';
 
-/** 字节内容解码结果。encoding 为实际采用的解码编码；unsupportedEncoding 非空表示声明无法识别、已按 UTF-8 降级。 */
+/** HTML 字节解码结果，包含文本、实际编码及未识别的编码声明。 */
 export interface HtmlDecodeResult {
+  /** 解码后的 HTML 文本。 */
   html: string;
+  /** 实际使用的字符编码。 */
   encoding: string;
+  /** 未识别的编码标签；空字符串表示未发生此类降级。 */
   unsupportedEncoding: string;
 }
 
@@ -26,7 +29,7 @@ function normalizeHtmlEncoding(label: string): string | null {
     return 'utf-8';
   }
   if (value === 'gb2312' || value === 'gbk' || value === 'x-gbk' || value === 'gb18030') {
-    // GB18030 向下兼容 GBK/GB2312，能覆盖经典版 Outlook 中文邮件。
+    // 将 GBK/GB2312 编码标签统一映射为 GB18030。
     return 'gb18030';
   }
   if (value === 'big5' || value === 'big5-hkscs') {
@@ -45,7 +48,7 @@ function normalizeHtmlEncoding(label: string): string | null {
 }
 
 function extractDeclaredCharset(content: Uint8Array): string | null {
-  // charset 标记本身由 ASCII 字符组成，用 iso-8859-1 扫描头部不会破坏字节。
+  // 将前 4096 字节映射为单字节字符，查找 charset 声明。
   const previewLength: number = Math.min(content.length, 4096);
   const preview: string = util.TextDecoder.create('iso-8859-1')
     .decodeToString(content.subarray(0, previewLength));
@@ -58,6 +61,8 @@ function extractDeclaredCharset(content: Uint8Array): string | null {
 /**
  * 解码 HTML 字节内容：优先 BOM，其次 <meta charset> 声明（gb2312/gbk 归一到
  * gb18030），无声明时默认 UTF-8；声明无法识别时按 UTF-8 降级并返回 unsupportedEncoding。
+ * @param content HTML 文件字节。
+ * @returns 解码后的文本及编码信息。
  */
 export function decodeHtmlContent(content: Uint8Array): HtmlDecodeResult {
   const bomEncoding: string | null = detectBomEncoding(content);
@@ -98,9 +103,9 @@ export function decodeHtmlContent(content: Uint8Array): HtmlDecodeResult {
 }
 
 /**
- * 把 HTML 文本内声明的字符编码统一为 UTF-8。
- * 文本已被解码为 Unicode 且落盘/传输统一使用 UTF-8 字节时，声明必须与字节一致，
- * 否则下游按旧声明（如 gb2312）解读 UTF-8 字节会乱码。
+ * 将文本中匹配到的 charset 声明替换为 UTF-8。
+ * @param html 已解码、准备以 UTF-8 写入的 HTML 文本。
+ * @returns 替换后的文本。
  */
 export function normalizeCharsetDeclaration(html: string): string {
   return html.replace(/charset\s*=\s*["']?\s*[a-z0-9._-]+/gi, 'charset=utf-8');

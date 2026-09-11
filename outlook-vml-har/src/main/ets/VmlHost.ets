@@ -19,9 +19,8 @@ interface PendingReady {
 }
 
 /**
- * 内部隐藏 ArkWeb 页面的状态机：从创建、onPageEnd 就绪到注入运行时，
- * 全部由本类封闭管理。调用方只负责把 VmlHost 组件挂载到页面并调用
- * parseFile，无需了解 WebviewController、onPageEnd 或 JS 注入细节。
+ * VML 文件转换控制器，管理解析页面的就绪状态和文件读写。
+ * 使用时须将同一个控制器实例传入页面中的 VmlHost 组件。
  */
 export class VmlHostController {
   readonly controller: webview.WebviewController = new webview.WebviewController();
@@ -30,8 +29,7 @@ export class VmlHostController {
   private waiters: PendingReady[] = [];
 
   /**
-   * 由 VmlHost 组件的 onPageEnd 回调调用，标记内部页面已就绪。
-   * 组件重新挂载时允许从 destroyed 状态恢复。
+   * 通知内部页面已就绪并释放等待任务，由 VmlHost 的 onPageEnd 回调调用。
    */
   notifyPageReady(): void {
     if (this.destroyed) {
@@ -43,7 +41,7 @@ export class VmlHostController {
     this.flushWaiters(true);
   }
 
-  /** 由 VmlHost 组件 aboutToDisappear 回调调用，释放等待中的调用方。 */
+  /** 标记宿主已销毁并结束等待任务，由 VmlHost 生命周期回调调用。 */
   markDestroyed(): void {
     this.destroyed = true;
     this.flushWaiters(false);
@@ -53,8 +51,9 @@ export class VmlHostController {
    * 解析 HTML 文件中的 VML 图片。
    *
    * @param inputPath 源 HTML 文件路径（应用沙箱内可读绝对路径）。
-   * @param outputPath 解析后 HTML 的落盘路径（父目录必须存在且可写）。
-   * @returns 输出路径与结构化解析报告。
+   * @param outputPath 输出 HTML 的绝对路径，父目录须存在且可写；已有文件将被覆盖。
+   * @returns 输出路径与诊断报告；解析或写入失败时 outputPath 为 null。
+   * @remarks 等待内部页面就绪最多 15 秒，输出文件使用 UTF-8 编码。
    */
   async parseFile(
     inputPath: string,
@@ -122,6 +121,7 @@ export class VmlHostController {
     return { outputPath: outputPath, report: parsed.report };
   }
 
+  /** 等待内部页面就绪；超时或宿主销毁时返回 false。 */
   private waitUntilReady(): Promise<boolean> {
     if (this.ready) {
       return Promise.resolve(!this.destroyed);
@@ -135,6 +135,7 @@ export class VmlHostController {
     });
   }
 
+  /** 移除指定计时器对应的等待任务。 */
   private removeWaiter(timer: number): void {
     let index: number = -1;
     for (let i: number = 0; i < this.waiters.length; i += 1) {
@@ -148,6 +149,7 @@ export class VmlHostController {
     }
   }
 
+  /** 清理计时器并统一结束所有等待任务。 */
   private flushWaiters(ready: boolean): void {
     const pending: PendingReady[] = this.waiters;
     this.waiters = [];
@@ -160,8 +162,7 @@ export class VmlHostController {
   /**
    * 读取 HTML 文件并按内容实际编码解码为 Unicode 字符串。
    * 编码判定顺序：BOM → <meta charset>（gb2312/gbk 归一到 gb18030）→ 默认 UTF-8。
-   * @returns 解码后的文本；文件不存在或读取失败时返回 null（错误细节写入 hilog）。
-   *          空文件返回空字符串（由解析入口按“HTML 为空”处理）。
+   * @returns 解码后的文本；读取失败返回 null 并记录日志，空文件返回空字符串。
    */
   private readTextFile(path: string): string | null {
     let file: fileIo.File | null = null;
@@ -171,7 +172,7 @@ export class VmlHostController {
       if (stat.size <= 0) {
         return '';
       }
-      // readSync 的 buffer 参数只接受 ArrayBuffer（不接受 Uint8Array 视图）。
+      // 使用 ArrayBuffer 接收文件字节。
       const buffer: ArrayBuffer = new ArrayBuffer(stat.size);
       const read: number = fileIo.readSync(file.fd, buffer);
       if (read < 0) {
@@ -191,12 +192,13 @@ export class VmlHostController {
         try {
           fileIo.closeSync(file);
         } catch (error) {
-          // 关闭失败可忽略，原始错误优先。
+          // 保留读写操作的返回结果，关闭异常不覆盖该结果。
         }
       }
     }
   }
 
+  /** 以 UTF-8 覆盖写入文件；成功返回 null，失败返回错误描述。 */
   private writeTextFile(path: string, content: string): string | null {
     let file: fileIo.File | null = null;
     try {
@@ -212,7 +214,7 @@ export class VmlHostController {
         try {
           fileIo.closeSync(file);
         } catch (error) {
-          // 关闭失败可忽略，原始错误优先。
+          // 保留读写操作的返回结果，关闭异常不覆盖该结果。
         }
       }
     }
@@ -220,11 +222,11 @@ export class VmlHostController {
 }
 
 /**
- * 托管解析容器：内部创建 1×1 透明 ArkWeb 页面并驱动生命周期。
- * 调用方页面只需挂载一次（位置任意），例如：
+ * VML 解析宿主组件，内部使用 1×1 透明 ArkWeb 页面。
+ * 每个控制器关联一个宿主组件；解析期间应保持组件挂载。
+ * @example
  *
  *   Stack() {
- *     // 业务内容……
  *     VmlHost({ host: this.vmlHost })
  *   }
  */
