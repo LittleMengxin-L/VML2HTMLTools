@@ -379,18 +379,17 @@ if (result.report.status !== 'failed' && result.outputPath !== null) {
 
 ## 发布前配置
 
-当前 `oh-package.json5` 中的包名、`author` 与 `license: "UNLICENSED"` 是安全占位配置。
+当前包使用 MIT 许可证，包名与维护者信息以 `oh-package.json5` 为准。
 发布到公共 OHPM 前必须：
 
 1. 换成实际拥有的包名或组织 scope，并确认 OHPM 上未被占用；
-2. 明确许可证，同步修改根目录 `LICENSE` 与 `oh-package.json5`；
+2. 确认发布产物包含 MIT 许可证全文与源码版权声明；
 3. 使用目标 DevEco Studio / HarmonyOS SDK 执行 release HAR 构建（勿用手工打包的源码包
    代替正式产物）；
 4. 确认 README、CHANGELOG、LICENSE 均非空。
 
 ## 许可证
 
-Copyright (c) VML SDK Maintainers.
+Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
 
-当前以 `UNLICENSED` 占位，未授权任何使用、修改或分发。正式开源前请替换为具体许可证
-（如 MIT / Apache-2.0）并同步更新 `oh-package.json5` 与 `LICENSE` 文件。
+本 SDK 使用 [MIT License](LICENSE)。完整条款见 LICENSE，源码文件包含对应版权和许可声明。

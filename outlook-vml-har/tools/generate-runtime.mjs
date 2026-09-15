@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License. See LICENSE in the HAR root for details.
+ */
+
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +24,8 @@ if (!source.includes('global.OutlookVMLParser = api;')) {
   throw new Error('VML 源码未导出 global.OutlookVMLParser。');
 }
 
-const generated = `// 此文件由 tools/generate-runtime.mjs 自动生成，请勿手工编辑。\n` +
+const licenseHeader = source.slice(0, source.indexOf('*/') + 2) + '\n\n';
+const generated = licenseHeader + `// 此文件由 tools/generate-runtime.mjs 自动生成，请勿手工编辑。\n` +
   `export const VML_RUNTIME_VERSION: string = ${JSON.stringify(version)};\n` +
   `export const VML_RUNTIME_SOURCE: string = ${JSON.stringify(source)};\n`;
 

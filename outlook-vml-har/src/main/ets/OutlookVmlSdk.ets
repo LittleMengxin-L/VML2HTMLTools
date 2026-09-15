@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License. See LICENSE in the HAR root for details.
+ */
+
 import { webview } from '@kit.ArkWeb';
 import { VML_RUNTIME_SOURCE, VML_RUNTIME_VERSION } from './VmlRuntime';
 import { HarErrorCode, ParseHtmlResult, VmlReport } from './VmlTypes';

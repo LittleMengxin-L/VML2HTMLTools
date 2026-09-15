@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License. See LICENSE in the HAR root for details.
+ */
+
 import { harTasks } from '@ohos/hvigor-ohos-plugin';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';

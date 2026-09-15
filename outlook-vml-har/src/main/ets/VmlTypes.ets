@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License. See LICENSE in the HAR root for details.
+ */
+
 /** 诊断信息的严重程度。 */
 export enum VmlIssueSeverity {
   ERROR = 'error',

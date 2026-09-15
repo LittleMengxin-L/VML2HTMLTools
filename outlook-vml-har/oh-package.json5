@@ -4,7 +4,7 @@
   "description": "Microsoft Outlook Classic VML parser and ArkWeb adapter",
   "main": "Index.ets",
   "author": "VML SDK Maintainers",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "artifactType": "original",
   "compatibleSdkVersion": "12",
   "compatibleSdkType": "HarmonyOS",

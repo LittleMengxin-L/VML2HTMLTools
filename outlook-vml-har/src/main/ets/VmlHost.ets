@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License. See LICENSE in the HAR root for details.
+ */
+
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { OutlookVmlSdk } from './OutlookVmlSdk';

@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd. All rights reserved.
+ *
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License. See LICENSE in the HAR root for details.
+ */
+
 import { util } from '@kit.ArkTS';
 
 /** HTML 字节解码结果，包含文本、实际编码及未识别的编码声明。 */
